@@ -12,14 +12,11 @@ dist-ssr/
 .env.*.local
 
 # Logs
-
+=======
 .DS_Store
 node_modules
 /dist
-*.local
-.vscode/
-.vite/
-.env
+
 
 # local env files
 .env.local
