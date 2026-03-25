@@ -18,8 +18,9 @@
           <td>{{ cita.fecha }}</td>
           <td>{{ cita.hora }}</td>
           <td>{{ cita.motivo }}</td>
-          <td>
-            <button class="btn-delete" @click="eliminarCita(cita.id)">Eliminar</button>
+          <td class="acciones">
+            <button class="btn-edit" @click="editarCita(cita)">✏️ Editar</button>
+            <button class="btn-delete" @click="confirmarEliminar(cita.id, cita.nombre)">🗑️ Eliminar</button>
           </td>
         </tr>
         <tr v-if="citas.length === 0">
@@ -40,6 +41,16 @@ export default {
     }
   },
   methods: {
+    editarCita(cita) {
+      this.$emit('editar', cita)
+    },
+    
+    confirmarEliminar(id, nombre) {
+      if (confirm(`¿Estás seguro de eliminar la cita de ${nombre}?`)) {
+        this.eliminarCita(id)
+      }
+    },
+    
     eliminarCita(id) {
       this.$emit('eliminar', id)
     }
@@ -75,6 +86,26 @@ tr:hover {
   background-color: #f5f5f5;
 }
 
+.acciones {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-edit {
+  padding: 5px 10px;
+  background-color: #ffc107;
+  color: #333;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background-color 0.3s;
+}
+
+.btn-edit:hover {
+  background-color: #ffcd39;
+}
+
 .btn-delete {
   padding: 5px 10px;
   background-color: #ff4757;
@@ -88,5 +119,16 @@ tr:hover {
 
 .btn-delete:hover {
   background-color: #ff6b81;
+}
+
+@media (max-width: 768px) {
+  .acciones {
+    flex-direction: column;
+    gap: 5px;
+  }
+  
+  .btn-edit, .btn-delete {
+    width: 100%;
+  }
 }
 </style>

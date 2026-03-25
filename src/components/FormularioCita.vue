@@ -1,13 +1,13 @@
 <template>
   <section class="form-section">
-    <h2>📝 Registrar Nuevo Paciente</h2>
-    <form @submit.prevent="agregarCita">
+    <h2>{{ modoEdicion ? '✏️ Editar Cita' : '📝 Registrar Nueva Cita' }}</h2>
+    <form @submit.prevent="guardarCita">
       <div class="form-group">
         <label for="nombre">Nombre Completo:</label>
         <input 
           type="text" 
           id="nombre" 
-          v-model="nuevaCita.nombre" 
+          v-model="citaForm.nombre" 
           required 
           placeholder="Ej: Juan Pérez González"
         >
@@ -18,7 +18,7 @@
         <input 
           type="tel" 
           id="telefono" 
-          v-model="nuevaCita.telefono" 
+          v-model="citaForm.telefono" 
           required 
           placeholder="Ej: 55-1234-5678"
         >
@@ -29,7 +29,7 @@
         <input 
           type="date" 
           id="fecha" 
-          v-model="nuevaCita.fecha" 
+          v-model="citaForm.fecha" 
           required
         >
       </div>
@@ -39,7 +39,7 @@
         <input 
           type="time" 
           id="hora" 
-          v-model="nuevaCita.hora" 
+          v-model="citaForm.hora" 
           required
         >
       </div>
@@ -48,23 +48,39 @@
         <label for="motivo">Motivo de la Consulta:</label>
         <textarea 
           id="motivo" 
-          v-model="nuevaCita.motivo" 
+          v-model="citaForm.motivo" 
           rows="3" 
           placeholder="Describa brevemente el motivo de la consulta"
         ></textarea>
       </div>
 
-      <button type="submit" class="btn-primary">Registrar Cita</button>
+      <div class="form-buttons">
+        <button type="submit" class="btn-primary">
+          {{ modoEdicion ? 'Actualizar Cita' : 'Registrar Cita' }}
+        </button>
+        <button v-if="modoEdicion" type="button" class="btn-secondary" @click="cancelarEdicion">
+          Cancelar
+        </button>
+      </div>
     </form>
   </section>
 </template>
 
 <script>
+import Swal from 'sweetalert2'
+
 export default {
   name: 'FormularioCita',
+  props: {
+    citaParaEditar: {
+      type: Object,
+      default: null
+    }
+  },
   data() {
     return {
-      nuevaCita: {
+      citaForm: {
+        id: null,
         nombre: '',
         telefono: '',
         fecha: '',
@@ -73,40 +89,99 @@ export default {
       }
     }
   },
+  computed: {
+    modoEdicion() {
+      return this.citaParaEditar !== null
+    }
+  },
+  watch: {
+    citaParaEditar: {
+      handler(nuevoValor) {
+        if (nuevoValor) {
+          this.citaForm = { ...nuevoValor }
+        } else {
+          this.resetearFormulario()
+        }
+      },
+      immediate: true
+    }
+  },
   methods: {
-    agregarCita() {
+    // Verificar si existe cita duplicada (excluyendo la cita actual en edición)
+    existeCitaDuplicada(fecha, hora, idExcluir = null) {
+      const citas = JSON.parse(localStorage.getItem('citas')) || []
+      return citas.some(cita => 
+        cita.fecha === fecha && 
+        cita.hora === hora && 
+        cita.id !== idExcluir
+      )
+    },
+
+    guardarCita() {
       const citas = JSON.parse(localStorage.getItem('citas')) || []
       
-      const citaCompleta = {
-        ...this.nuevaCita,
-        id: Date.now()
+      // Validación de campos obligatorios
+      if (!this.citaForm.nombre || !this.citaForm.telefono || 
+          !this.citaForm.fecha || !this.citaForm.hora) {
+        this.mostrarNotificacion('Todos los campos son obligatorios', 'error')
+        return
       }
-      
-      citas.push(citaCompleta)
-      localStorage.setItem('citas', JSON.stringify(citas))
-      
-      // Resetear formulario
-      this.nuevaCita = {
+
+      // Validación de duplicados
+      if (this.existeCitaDuplicada(this.citaForm.fecha, this.citaForm.hora, this.citaForm.id)) {
+        this.mostrarNotificacion('Ya existe una cita en esta fecha y hora', 'error')
+        return
+      }
+
+      if (this.modoEdicion) {
+        // Modo edición: actualizar cita existente
+        const index = citas.findIndex(c => c.id === this.citaForm.id)
+        if (index !== -1) {
+          citas[index] = { ...this.citaForm }
+          localStorage.setItem('citas', JSON.stringify(citas))
+          this.mostrarNotificacion('Cita actualizada exitosamente', 'success')
+          this.$emit('cita-actualizada')
+          this.$emit('cancelar-edicion')
+        }
+      } else {
+        // Modo creación: agregar nueva cita
+        const nuevaCita = {
+          ...this.citaForm,
+          id: Date.now()
+        }
+        
+        citas.push(nuevaCita)
+        localStorage.setItem('citas', JSON.stringify(citas))
+        this.mostrarNotificacion('Cita registrada exitosamente', 'success')
+        this.$emit('cita-agregada')
+        this.resetearFormulario()
+      }
+    },
+    
+    cancelarEdicion() {
+      this.$emit('cancelar-edicion')
+      this.resetearFormulario()
+    },
+
+    resetearFormulario() {
+      this.citaForm = {
+        id: null,
         nombre: '',
         telefono: '',
         fecha: '',
         hora: '',
         motivo: ''
       }
-      
-      this.mostrarNotificacion('Cita registrada exitosamente', 'success')
-      this.$emit('cita-agregada')
     },
     
     mostrarNotificacion(mensaje, tipo) {
-      const notification = document.createElement('div')
-      notification.className = `notification ${tipo}`
-      notification.textContent = mensaje
-      document.body.appendChild(notification)
-      
-      setTimeout(() => {
-        notification.remove()
-      }, 3000)
+      Swal.fire({
+        title: 'Consultorio Médico',
+        text: mensaje,
+        icon: tipo === 'error' ? 'error' : 'success',
+        confirmButtonText: 'Aceptar',
+        confirmButtonColor: tipo === 'error' ? '#ff6b6b' : '#667eea'
+      })
     }
   }
 }
@@ -154,8 +229,14 @@ input:focus, textarea:focus {
   box-shadow: 0 0 5px rgba(102, 126, 234, 0.3);
 }
 
+.form-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
 .btn-primary {
-  width: 100%;
+  flex: 1;
   padding: 12px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
@@ -172,30 +253,19 @@ input:focus, textarea:focus {
   box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
 }
 
-.notification {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  padding: 15px 20px;
-  border-radius: 5px;
+.btn-secondary {
+  padding: 12px 20px;
+  background: #6c757d;
   color: white;
-  font-weight: 500;
-  animation: slideIn 0.3s ease;
-  z-index: 1000;
+  border: none;
+  border-radius: 5px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
 }
 
-.notification.success {
-  background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
-}
-
-@keyframes slideIn {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
+.btn-secondary:hover {
+  background: #5a6268;
 }
 </style>
