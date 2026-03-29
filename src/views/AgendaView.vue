@@ -1,28 +1,21 @@
 <template>
-  <div class="agenda-view">
-    <h2>📋 Lista de Citas</h2>
+  <section class="list-section">
+    <h2>📋 Lista de Pacientes Registrados</h2>
+    
     <Buscador @buscar="filtrarCitas" />
+    
     <TablaPacientes 
       :citas="citasFiltradas" 
       @eliminar="eliminarCita"
-      @editar="editarCita"
     />
+    
     <Estadisticas :citas="citas" />
-  </div>
+  </section>
 </template>
 
 <script>
-import Buscador from '../components/Buscador.vue'
-import TablaPacientes from '../components/TablaPacientes.vue'
-import Estadisticas from '../components/Estadisticas.vue'
-
 export default {
   name: 'AgendaView',
-  components: {
-    Buscador,
-    TablaPacientes,
-    Estadisticas
-  },
   props: {
     citas: {
       type: Array,
@@ -31,34 +24,43 @@ export default {
   },
   data() {
     return {
-      terminoBusqueda: ''
+      filtro: ''
     }
   },
   computed: {
+    // Búsqueda filtrada
     citasFiltradas() {
-      if (!this.terminoBusqueda) return this.citas
-      
-      const busqueda = this.terminoBusqueda.toLowerCase()
       return this.citas.filter(cita => 
-        cita.nombre.toLowerCase().includes(busqueda) ||
-        cita.telefono.includes(busqueda)
+        cita.nombre.toLowerCase().includes(this.filtro.toLowerCase()) ||
+        cita.telefono.includes(this.filtro)
       )
     }
   },
   methods: {
-    eliminarCita(id) {
-      const citas = JSON.parse(localStorage.getItem('citas')) || []
-      const citasActualizadas = citas.filter(cita => cita.id !== id)
-      localStorage.setItem('citas', JSON.stringify(citasActualizadas))
-      this.$emit('cita-eliminada')
-    },
-    
-    editarCita(cita) {
-      this.$emit('cita-editar', cita)
-    },
-    
     filtrarCitas(termino) {
-      this.terminoBusqueda = termino
+      this.filtro = termino
+    },
+    
+    eliminarCita(id) {
+      if(confirm('¿Estás seguro de eliminar esta cita?')) {
+        const citas = JSON.parse(localStorage.getItem('citas')) || []
+        const citasActualizadas = citas.filter(cita => cita.id !== id)
+        localStorage.setItem('citas', JSON.stringify(citasActualizadas))
+        
+        this.mostrarNotificacion('Cita eliminada', 'success')
+        this.$emit('cita-eliminada')
+      }
+    },
+    
+    mostrarNotificacion(mensaje, tipo) {
+      const notification = document.createElement('div')
+      notification.className = `notification ${tipo}`
+      notification.textContent = mensaje
+      document.body.appendChild(notification)
+      
+      setTimeout(() => {
+        notification.remove()
+      }, 3000)
     }
   }
 }
@@ -70,6 +72,7 @@ export default {
   padding: 25px;
   border-radius: 10px;
   box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  transition: all 0.3s ease;
 }
 
 .agenda-view h2 {
@@ -78,5 +81,32 @@ export default {
   font-size: 1.5em;
   border-bottom: 2px solid #667eea;
   padding-bottom: 10px;
+}
+
+.notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 15px 20px;
+  border-radius: 5px;
+  color: white;
+  font-weight: 500;
+  animation: slideIn 0.3s ease;
+  z-index: 1000;
+}
+
+.notification.success {
+  background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 </style>
