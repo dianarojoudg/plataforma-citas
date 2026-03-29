@@ -87,4 +87,41 @@ main {
     font-size: 2em;
   }
 }
+/* Estilos globales para modo oscuro */
+body {
+  transition: background 0.3s ease;
+}
+
+body.dark-mode {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+}
+
+body.dark-mode .form-section {
+  background: #2d2d3a;
+  color: #fff;
+}
+
+body.dark-mode .form-section h2 {
+  color: #fff;
+}
+
+body.dark-mode .form-group label {
+  color: #ccc;
+}
+
+body.dark-mode input, 
+body.dark-mode textarea {
+  background: #3a3a4a;
+  color: #fff;
+  border-color: #4a4a5a;
+}
+
+body.dark-mode input:focus, 
+body.dark-mode textarea:focus {
+  border-color: #667eea;
+}
+
+body.dark-mode .btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
 </style>
