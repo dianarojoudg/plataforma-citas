@@ -6,8 +6,17 @@
     </header>
     
     <main>
-      <FormularioCita @cita-agregada="cargarCitas" />
-      <AgendaView :citas="citas" @cita-eliminada="cargarCitas" />
+      <FormularioCita 
+        :citaParaEditar="citaEnEdicion"
+        @cita-agregada="cargarCitas"
+        @cita-actualizada="cargarCitas"
+        @cancelar-edicion="cancelarEdicion"
+      />
+      <AgendaView 
+        :citas="citas" 
+        @cita-eliminada="cargarCitas"
+        @cita-editar="editarCita"
+      />
     </main>
   </div>
 </template>
@@ -24,12 +33,29 @@ export default {
   },
   data() {
     return {
-      citas: []
+      citas: [],
+      citaEnEdicion: null
     }
   },
   methods: {
     cargarCitas() {
       this.citas = JSON.parse(localStorage.getItem('citas')) || []
+      this.citaEnEdicion = null // Limpiar edición después de guardar
+    },
+    
+    editarCita(cita) {
+      this.citaEnEdicion = cita
+      // Scroll suave al formulario
+      this.$nextTick(() => {
+        const formSection = document.querySelector('.form-section')
+        if (formSection) {
+          formSection.scrollIntoView({ behavior: 'smooth' })
+        }
+      })
+    },
+    
+    cancelarEdicion() {
+      this.citaEnEdicion = null
     }
   },
   mounted() {
