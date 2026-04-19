@@ -2,30 +2,32 @@
   <section class="list-section">
     <h2>📋 Agenda de Pacientes</h2>
 
-    <!-- 🔍 BUSCADOR -->
-    <input 
-      type="text" 
-      v-model="terminoBusqueda" 
-      placeholder="Buscar paciente..."
-      class="search-input"
-    />
+    <!-- 🔍 BUSQUEDA -->
+    <div class="top-bar">
+      <input 
+        type="text" 
+        v-model="terminoBusqueda"
+        placeholder="🔍 Buscar paciente..."
+      />
+
+      <button class="btn-pdf" @click="exportarPDF">
+        📄 PDF
+      </button>
+    </div>
 
     <!-- 📅 FILTROS -->
     <div class="filtros">
-      <button @click="filtro = 'todos'">Todos</button>
-      <button @click="filtro = 'hoy'">Hoy</button>
-      <button @click="filtro = 'semana'">Semana</button>
-      <button @click="filtro = 'mes'">Mes</button>
+      <button :class="{active: filtro==='todos'}" @click="filtro='todos'">Todos</button>
+      <button :class="{active: filtro==='hoy'}" @click="filtro='hoy'">Hoy</button>
+      <button :class="{active: filtro==='semana'}" @click="filtro='semana'">Semana</button>
+      <button :class="{active: filtro==='mes'}" @click="filtro='mes'">Mes</button>
     </div>
-
-    <!-- 📄 BOTÓN PDF -->
-    <button class="btn-pdf" @click="exportarPDF">📄 Descargar PDF</button>
 
     <!-- 👀 VISTA -->
     <div class="view-selector">
-      <button @click="vista = 'tabla'">Tabla</button>
-      <button @click="vista = 'semanal'">Semanal</button>
-      <button @click="vista = 'mensual'">Mensual</button>
+      <button :class="{active: vista==='tabla'}" @click="vista='tabla'">Tabla</button>
+      <button :class="{active: vista==='semanal'}" @click="vista='semanal'">Semanal</button>
+      <button :class="{active: vista==='mensual'}" @click="vista='mensual'">Mensual</button>
     </div>
 
     <!-- 📊 TABLA -->
@@ -42,14 +44,14 @@
       </thead>
       <tbody>
         <tr v-for="cita in citasFiltradas" :key="cita.id">
-          <td>{{ cita.fecha }}</td>
+          <td>{{ formatFecha(cita.fecha) }}</td>
           <td>{{ cita.nombre }}</td>
           <td>{{ cita.telefono }}</td>
           <td>{{ cita.hora }}</td>
           <td>{{ cita.motivo }}</td>
           <td>
-            <button @click="$emit('cita-editar', cita)">✏️</button>
-            <button @click="eliminarCita(cita.id)">🗑️</button>
+            <button class="edit" @click="$emit('cita-editar', cita)">✏️</button>
+            <button class="delete" @click="eliminarCita(cita.id)">🗑️</button>
           </td>
         </tr>
       </tbody>
@@ -57,7 +59,7 @@
 
     <!-- 📅 SEMANAL -->
     <div v-if="vista === 'semanal'" class="grid">
-      <div v-for="dia in semana" :key="dia.fecha" class="card">
+      <div v-for="(dia, i) in semana" :key="i" class="card">
         <h4>{{ dia.nombre }}</h4>
         <p v-for="c in dia.citas" :key="c.id">
           {{ c.hora }} - {{ c.nombre }}
@@ -67,22 +69,22 @@
 
     <!-- 🗓️ MENSUAL -->
     <div v-if="vista === 'mensual'" class="grid">
-      <div v-for="dia in mes" :key="dia.fecha" class="card">
+      <div v-for="dia in mes" :key="dia.numero" class="card">
         <strong>{{ dia.numero }}</strong>
         <p v-for="c in dia.citas" :key="c.id">
           {{ c.hora }}
         </p>
       </div>
     </div>
-
   </section>
 </template>
 
 <script>
-import jsPDF from 'jspdf'
+import jsPDF from "jspdf"
 
 export default {
   props: ['citas'],
+
   data() {
     return {
       terminoBusqueda: '',
@@ -93,53 +95,52 @@ export default {
 
   computed: {
     citasFiltradas() {
-      let resultado = this.citas
+      let res = this.citas
 
-      const hoy = new Date().toISOString().split('T')[0]
+      const hoy = new Date()
 
-      // 🔎 FILTRO POR TIEMPO
+      // FILTROS
       if (this.filtro === 'hoy') {
-        resultado = resultado.filter(c => c.fecha === hoy)
+        const h = hoy.toISOString().split('T')[0]
+        res = res.filter(c => c.fecha === h)
       }
 
       if (this.filtro === 'semana') {
-        const inicio = new Date()
-        inicio.setDate(inicio.getDate() - inicio.getDay())
-        const fin = new Date(inicio)
-        fin.setDate(fin.getDate() + 6)
+        const inicio = new Date(hoy)
+        inicio.setDate(hoy.getDate() - hoy.getDay())
 
-        resultado = resultado.filter(c => {
+        const fin = new Date(inicio)
+        fin.setDate(inicio.getDate() + 6)
+
+        res = res.filter(c => {
           const f = new Date(c.fecha)
           return f >= inicio && f <= fin
         })
       }
 
       if (this.filtro === 'mes') {
-        const hoyObj = new Date()
-        resultado = resultado.filter(c => {
+        res = res.filter(c => {
           const f = new Date(c.fecha)
-          return f.getMonth() === hoyObj.getMonth()
+          return f.getMonth() === hoy.getMonth()
         })
       }
 
-      // 🔍 BUSQUEDA
+      // BUSQUEDA
       if (this.terminoBusqueda) {
-        resultado = resultado.filter(c =>
+        res = res.filter(c =>
           c.nombre.toLowerCase().includes(this.terminoBusqueda.toLowerCase())
         )
       }
 
-      return resultado
+      return res
     },
 
     semana() {
-      const dias = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
-      return dias.map((d, i) => {
-        return {
-          nombre: d,
-          citas: this.citasFiltradas.filter(c => new Date(c.fecha).getDay() === i)
-        }
-      })
+      const dias = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb']
+      return dias.map((d, i) => ({
+        nombre: d,
+        citas: this.citasFiltradas.filter(c => new Date(c.fecha).getDay() === i)
+      }))
     },
 
     mes() {
@@ -164,15 +165,21 @@ export default {
     exportarPDF() {
       const doc = new jsPDF()
 
+      doc.setFontSize(14)
       doc.text("Agenda de Pacientes", 10, 10)
 
       let y = 20
       this.citasFiltradas.forEach(c => {
-        doc.text(`${c.fecha} - ${c.hora} - ${c.nombre}`, 10, y)
-        y += 10
+        doc.text(`${c.fecha} | ${c.hora} | ${c.nombre}`, 10, y)
+        y += 8
       })
 
       doc.save("agenda.pdf")
+    },
+
+    formatFecha(f) {
+      const [y,m,d] = f.split('-')
+      return `${d}/${m}/${y}`
     }
   }
 }
@@ -181,55 +188,121 @@ export default {
 <style scoped>
 .list-section {
   background: white;
-  padding: 20px;
-  border-radius: 10px;
+  padding: 25px;
+  border-radius: 16px;
+  box-shadow: 0 15px 40px rgba(0,0,0,0.08);
 }
 
-.search-input {
-  width: 100%;
-  padding: 10px;
-  margin-bottom: 10px;
-}
-
-.filtros {
+/* TOP */
+.top-bar {
   display: flex;
   gap: 10px;
-  margin-bottom: 10px;
+  margin-bottom: 15px;
 }
 
-button {
-  padding: 6px 10px;
-  cursor: pointer;
+input {
+  flex: 1;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
 }
 
 .btn-pdf {
-  background: red;
+  background: #ff4b5c;
   color: white;
-  margin-bottom: 10px;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 10px;
+  cursor: pointer;
 }
 
+/* FILTROS */
+.filtros {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.filtros button {
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: none;
+  cursor: pointer;
+  background: #eee;
+}
+
+.filtros .active {
+  background: #667eea;
+  color: white;
+}
+
+/* VISTAS */
 .view-selector {
-  margin-bottom: 10px;
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
 }
 
+.view-selector button {
+  flex: 1;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  cursor: pointer;
+}
+
+.view-selector .active {
+  background: #667eea;
+  color: white;
+}
+
+/* TABLA */
 table {
   width: 100%;
   border-collapse: collapse;
 }
 
-td, th {
-  border: 1px solid #ddd;
-  padding: 8px;
+th {
+  background: #667eea;
+  color: white;
+  padding: 10px;
 }
 
+td {
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+}
+
+tr:hover {
+  background: #f9f9ff;
+}
+
+/* BOTONES */
+.edit {
+  background: #4CAF50;
+  color: white;
+  border: none;
+  padding: 5px;
+  margin-right: 5px;
+}
+
+.delete {
+  background: #ff4b5c;
+  color: white;
+  border: none;
+  padding: 5px;
+}
+
+/* GRID */
 .grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7,1fr);
   gap: 10px;
 }
 
 .card {
-  background: #f5f5f5;
+  background: #f5f5ff;
   padding: 10px;
+  border-radius: 10px;
 }
 </style>
